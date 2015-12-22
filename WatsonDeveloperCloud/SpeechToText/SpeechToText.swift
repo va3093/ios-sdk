@@ -238,20 +238,31 @@ public class SpeechToText: WatsonService {
         
         var ptr = UnsafeMutablePointer<UInt8>(data.bytes)
         
+        let outData = NSMutableData(capacity: data.length)
+        
+        // Write the header file containing the sample rate.
+        let header = ogg.getOggOpusHeader(Int32(WATSON_AUDIO_SAMPLE_RATE))
+        outData?.appendBytes(header.bytes, length: header.length)
+        
         repeat {
             let thisChunkSize = length - offset > chunkSize ? chunkSize : length - offset
             
             ptr += offset
             let chunk = NSData(bytesNoCopy: ptr, length: thisChunkSize, freeWhenDone: false)
             
-            let compressed : NSData = opus.encode(chunk, frameSize: Int32(WATSON_AUDIO_FRAME_SIZE))
+            let compressed : NSData = opus.encode(chunk,
+                frameSize: Int32(WATSON_AUDIO_FRAME_SIZE))
             
             if compressed.length != 0 {
-                let newData = ogg.writePacket(compressed, frameSize: Int32(WATSON_AUDIO_FRAME_SIZE))
+                
+                let newData = ogg.writePacket(compressed,
+                    frameSize: Int32(WATSON_AUDIO_FRAME_SIZE))
                 
                 if newData != nil {
                     // send to websocket
                     Log.sharedLogger.info("Writing a chunk with \(newData.length) bytes")
+                    
+                    outData?.appendBytes(newData.bytes, length: newData.length)
                 }
             }
             
@@ -259,7 +270,9 @@ public class SpeechToText: WatsonService {
             
         } while offset < length
         
-        let data = opus.encode(data, frameSize: Int32(WATSON_AUDIO_FRAME_SIZE))
+        // let data = opus.encode(data, frameSize: Int32(WATSON_AUDIO_FRAME_SIZE))
+        
+        let data = NSData(bytes: outData!.bytes, length: outData!.length)
         return data
     }
 
