@@ -66,9 +66,15 @@ class SpeechToTextTests: XCTestCase {
         super.tearDown()
     }
     
+    /**
+    * Tests raw audio captured as PCM and compressed to Opus for transcription
+    */
     func testEncoding() {
+        
+        let encodeExpectation = expectationWithDescription("Testing encode.")
+        
         let bundle = NSBundle(forClass: self.dynamicType)
-        guard let url = bundle.URLForResource("test", withExtension: "raw") else {
+        guard let url = bundle.URLForResource("this-is-a-test", withExtension: "raw") else {
             XCTFail("Unable to locate test.raw file.")
             return
         }
@@ -80,6 +86,41 @@ class SpeechToTextTests: XCTestCase {
         let encodedAudio = service.encodeOpus(data)
         XCTAssertLessThan(encodedAudio.length, data.length,
             "Encoded audio must be smaller than the original.")
+        
+        service.transcribe(encodedAudio, format: .OPUS) { response, error in
+            guard let response = response else {
+                XCTFail("Expected a non-nil response.")
+                return
+            }
+            
+            guard let results = response.results else {
+                XCTFail("Expected a non-nil result.")
+                return
+            }
+            
+            XCTAssertGreaterThan(results.count, 0, "Must return more than zero results")
+            
+            guard let alternatives = results[0].alternatives else {
+                XCTFail("Must return more than zero results.")
+                return
+            }
+            
+            XCTAssertGreaterThan(alternatives.count, 0, "Must return more than zero results")
+            
+            guard let transcript = alternatives[0].transcript else {
+                XCTFail("Expected a non-nil transcript.")
+                return
+            }
+            
+            XCTAssertEqual(transcript, "several tornadoes touch down as a line of severe thunderstorms swept through Colorado on Sunday ")
+            
+            encodeExpectation.fulfill()
+        }
+        
+        waitForExpectationsWithTimeout(timeout) {
+            error in XCTAssertNil(error, "Timeout")
+        }
+
     }
     
     func testSimpleFLACTranscription() {
