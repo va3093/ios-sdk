@@ -38,6 +38,9 @@ public class SpeechToText: WatsonService {
     
     public var delegate : SpeechToTextDelegate?
     
+    //
+    public var listening : Bool = false
+    
     private let opus: OpusHelper = OpusHelper()
     private let ogg: OggHelper = OggHelper()
     
@@ -89,15 +92,14 @@ public class SpeechToText: WatsonService {
         self.init(authStrategy: authStrategy)
     }
     
+    
+    /**
+    * Create audio queues and begin recording
+    **/
     public func startListening()
     {
         
-        //var queue = AudioQueueRef()
-//        let buffers:[AudioQueueBufferRef] = [AudioQueueBufferRef(),
-//            AudioQueueBufferRef(),
-//            AudioQueueBufferRef()]
-        
-        // connectWebsocket()
+        self.listening = true
         
         let format = AudioStreamBasicDescription(
             mSampleRate: 16000,
@@ -129,6 +131,7 @@ public class SpeechToText: WatsonService {
                 nil, kCFRunLoopCommonModes, 0, &audioState.queue)
 
             for index in 1...NUM_BUFFERS {
+                
                 AudioQueueAllocateBuffer(audioState.queue, BUFFER_SIZE, &audioState.buffers[index-1])
             
                 AudioQueueEnqueueBuffer(audioState.queue, audioState.buffers[index-1], 0, nil)
@@ -140,6 +143,8 @@ public class SpeechToText: WatsonService {
         } else {
             Log.sharedLogger.error("No audio state object was created.")
         }
+            
+            
         
     }
     
@@ -156,6 +161,8 @@ public class SpeechToText: WatsonService {
         } else {
             Log.sharedLogger.error("Audio state not created")
         }
+        
+        self.listening = false
     }
     
     /// Callback function when the audio buffer is full
